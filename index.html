@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML Mondays | Neural Hive</title>
+    
+    <!-- Tailwind CSS (via CDN for runtime styling) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        neutral: {
+                            950: '#0a0a0a',
+                        }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- React & ReactDOM (via CDN) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel (to compile JSX in browser) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Lucide Icons (Global Script) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body {
+            background-color: #0a0a0a;
+            color: #e5e5e5;
+            -webkit-font-smoothing: antialiased;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0a0a0a; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #7c3aed; 
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- DATA LAYER ---
+        const BLOG_DATA = [
+            {
+                slug: 'genai-fundamentals',
+                title: 'Generative AI: Beyond the Hype',
+                excerpt: 'Understanding the transformer architecture and how Large Language Models are reshaping the deployment landscape.',
+                author: 'Sarah Chen',
+                date: '2023-10-24',
+                category: 'Deep Learning',
+                readTime: 8,
+                views: 1240,
+                tags: ['LLM', 'Transformers', 'Architecture'],
+                content: `
+## The Transformer Revolution
+Generative AI has shifted from niche research to production reality. At the core lies the Transformer architecture, introduced by Google in 2017. Unlike RNNs, Transformers process data in parallel, allowing for massive scale.
+
+### Attention is All You Need
+The self-attention mechanism allows the model to weigh the importance of different words in a sentence, regardless of their positional distance. This capability is crucial for understanding context.
+
+> "The future of AI is not just in scale, but in efficiency and reasoning."
+
+## Deployment Challenges
+While training is expensive, inference costs are the silent killer in production. Quantization and pruning are no longer optional; they are requirements for sustainable MLOps.
+                `
+            },
+            {
+                slug: 'ml-ops-guide',
+                title: 'The Modern MLOps Pipeline',
+                excerpt: 'From experimentation to monitoring: A comprehensive guide to building robust machine learning pipelines.',
+                author: 'Marcus Thorne',
+                date: '2023-11-02',
+                category: 'Engineering',
+                readTime: 12,
+                views: 890,
+                tags: ['DevOps', 'MLOps', 'Pipelines'],
+                content: `
+## Why Notebooks Aren't Enough
+Jupyter notebooks are fantastic for exploration but terrible for production. The transition from .ipynb to modular Python packages is the first step in mature MLOps.
+
+### CI/CD for Models
+Just as we version code, we must version data and models. Tools like DVC (Data Version Control) and MLflow bridge this gap.
+
+1. Data Ingestion
+2. Preprocessing
+3. Training
+4. Evaluation
+5. Deployment
+                `
+            },
+            {
+                slug: 'reinforcement-learning',
+                title: 'RLHF: Aligning Models with Human Intent',
+                excerpt: 'Reinforcement Learning from Human Feedback is the secret sauce behind the usability of modern chat models.',
+                author: 'Dr. Elena Ross',
+                date: '2023-11-15',
+                category: 'Research',
+                readTime: 15,
+                views: 2100,
+                tags: ['RLHF', 'Alignment', 'Safety'],
+                content: `
+## The Alignment Problem
+A model predicting the next token accurately doesn't mean it's helpful or safe. This is where RLHF comes in.
+
+### The Reward Model
+We train a separate reward model based on human preferences. This model then acts as a customized loss function for the main LLM using PPO (Proximal Policy Optimization).
+                `
+            }
+        ];
+
+        // --- UTILS ---
+        const Icon = ({ name, size = 24, className = "" }) => {
+            useEffect(() => {
+                lucide.createIcons();
+            }, [name]); // Re-run when name changes or component mounts
+
+            return <i data-lucide={name} width={size} height={size} className={className}></i>;
+        };
+
+        const formatDate = (dateStr) => {
+            return new Date(dateStr).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        };
+
+        // --- COMPONENTS ---
+
+        const Logo = () => (
+            <div className="flex items-center gap-2 font-bold text-xl tracking-tighter select-none">
+                <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(124,58,237,0.5)]">
+                    <Icon name="cpu" className="text-white w-5 h-5" />
+                </div>
+                <span className="text-white">NEURAL<span className="text-violet-400">HIVE</span></span>
+            </div>
+        );
+
+        const NavLink = ({ active, onClick, children }) => (
+            <button
+                onClick={onClick}
+                className={`text-sm font-medium transition-all duration-200 ${
+                    active 
+                        ? 'text-violet-400 drop-shadow-[0_0_8px_rgba(139,92,246,0.6)]' 
+                        : 'text-neutral-400 hover:text-white'
+                }`}
+            >
+                {children}
+            </button>
+        );
+
+        const Button = ({ children, variant = 'primary', className = '', onClick }) => {
+            const baseStyles = "px-6 py-2.5 rounded-full font-medium text-sm transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0";
+            const variants = {
+                primary: "bg-violet-600 text-white hover:bg-violet-500 shadow-[0_0_20px_rgba(124,58,237,0.3)] hover:shadow-[0_0_30px_rgba(124,58,237,0.5)]",
+                outline: "border border-neutral-700 text-neutral-300 hover:border-violet-500 hover:text-violet-400 bg-transparent",
+            };
+            return (
+                <button onClick={onClick} className={`${baseStyles} ${variants[variant]} ${className}`}>
+                    {children}
+                </button>
+            );
+        };
+
+        const PostCard = ({ post, onClick }) => (
+            <article 
+                onClick={onClick}
+                className="group cursor-pointer relative bg-neutral-900/50 border border-neutral-800 rounded-2xl p-6 hover:border-violet-500/50 transition-all duration-300 overflow-hidden animate-fade-in"
+            >
+                <div className="absolute inset-0 bg-violet-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                
+                <div className="relative z-10 flex flex-col h-full">
+                    <div className="flex items-center gap-3 text-xs font-medium text-violet-400 mb-4">
+                        <span className="bg-violet-500/10 px-2 py-1 rounded-md border border-violet-500/20">
+                            {post.category}
+                        </span>
+                        <span className="text-neutral-500 flex items-center gap-1">
+                            <Icon name="clock" size={12} /> {post.readTime} min read
+                        </span>
+                    </div>
+                    
+                    <h3 className="text-xl font-bold text-white mb-3 group-hover:text-violet-300 transition-colors">
+                        {post.title}
+                    </h3>
+                    
+                    <p className="text-neutral-400 text-sm leading-relaxed mb-6 flex-grow">
+                        {post.excerpt}
+                    </p>
+                    
+                    <div className="flex items-center justify-between pt-4 border-t border-neutral-800/50">
+                        <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500" />
+                            <span className="text-xs text-neutral-300">{post.author}</span>
+                        </div>
+                        <div className="text-neutral-500 text-xs flex items-center gap-1">
+                            <Icon name="eye" size={12} /> {post.views}
+                        </div>
+                    </div>
+                </div>
+            </article>
+        );
+
+        // --- PAGES ---
+
+        const Home = ({ navigate, posts }) => (
+            <div className="space-y-24 animate-fade-in">
+                {/* Hero Section */}
+                <section className="relative pt-20 pb-10 px-4 text-center max-w-5xl mx-auto">
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-violet-600/20 blur-[120px] rounded-full -z-10 pointer-events-none" />
+                    
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-neutral-900/80 border border-neutral-700 text-xs font-medium text-violet-400 mb-8">
+                        <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-500"></span>
+                        </span>
+                        ML Mondays is live
+                    </div>
+                    
+                    <h1 className="text-5xl md:text-7xl font-bold text-white tracking-tight mb-6 leading-tight">
+                        Decode the <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-400">Future</span> of<br />
+                        Machine Intelligence
+                    </h1>
+                    
+                    <p className="text-lg text-neutral-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+                        Weekly deep dives into Generative AI, MLOps, and the research shaping our world. 
+                        Curated by the engineers at Neural Hive.
+                    </p>
+                    
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                        <Button onClick={() => navigate('posts')}>Start Reading</Button>
+                        <Button variant="outline" onClick={() => navigate('about')}>About Neural Hive</Button>
+                    </div>
+                </section>
+
+                {/* Featured */}
+                <section className="max-w-7xl mx-auto px-4">
+                    <div className="flex items-center justify-between mb-10">
+                        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                            <Icon name="terminal" className="text-violet-500" /> 
+                            Latest Transmissions
+                        </h2>
+                        <button 
+                            onClick={() => navigate('posts')}
+                            className="text-sm text-violet-400 hover:text-violet-300 flex items-center gap-1 transition-colors"
+                        >
+                            View Archive <Icon name="arrow-right" size={14} />
+                        </button>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {posts.slice(0, 3).map(post => (
+                            <PostCard key={post.slug} post={post} onClick={() => navigate('post', post.slug)} />
+                        ))}
+                    </div>
+                </section>
+            </div>
+        );
+
+        const Posts = ({ navigate, posts }) => {
+            const [filter, setFilter] = useState('All');
+            const categories = ['All', ...new Set(posts.map(p => p.category))];
+            
+            const filteredPosts = filter === 'All' 
+                ? posts 
+                : posts.filter(p => p.category === filter);
+
+            return (
+                <div className="max-w-7xl mx-auto px-4 pt-32 pb-20 animate-fade-in">
+                    <div className="text-center mb-16">
+                        <h1 className="text-4xl font-bold text-white mb-4">The Archive</h1>
+                        <p className="text-neutral-400">Explore our library of thoughts, tutorials, and research.</p>
+                    </div>
+
+                    <div className="flex flex-wrap justify-center gap-2 mb-12">
+                        {categories.map(cat => (
+                            <button
+                                key={cat}
+                                onClick={() => setFilter(cat)}
+                                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                                    filter === cat 
+                                        ? 'bg-violet-600 text-white' 
+                                        : 'bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800'
+                                }`}
+                            >
+                                {cat}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {filteredPosts.map(post => (
+                            <PostCard key={post.slug} post={post} onClick={() => navigate('post', post.slug)} />
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        const PostDetail = ({ post, navigate }) => {
+            useEffect(() => {
+                window.scrollTo(0,0);
+            }, [post]);
+
+            if (!post) return null;
+
+            const renderContent = (content) => {
+                return content.split('\n').map((line, idx) => {
+                    const trimmed = line.trim();
+                    if (trimmed.startsWith('###')) return <h3 key={idx} className="text-xl font-bold text-white mt-8 mb-4">{trimmed.replace('###', '')}</h3>;
+                    if (trimmed.startsWith('##')) return <h2 key={idx} className="text-2xl font-bold text-white mt-10 mb-5 pb-2 border-b border-neutral-800">{trimmed.replace('##', '')}</h2>;
+                    if (trimmed.startsWith('>')) return <blockquote key={idx} className="border-l-4 border-violet-500 pl-4 py-2 my-6 text-xl text-neutral-300 italic bg-neutral-900/50 rounded-r-lg">{trimmed.replace('>', '')}</blockquote>;
+                    if (trimmed.match(/^\d\./)) return <div key={idx} className="ml-6 my-2 text-neutral-300 font-medium">{trimmed}</div>;
+                    if (trimmed === '') return <div key={idx} className="h-4" />;
+                    return <p key={idx} className="text-neutral-300 leading-7 mb-4">{trimmed}</p>;
+                });
+            };
+
+            return (
+                <article className="pt-32 pb-20 animate-fade-in">
+                    <div className="max-w-3xl mx-auto px-4">
+                        <button 
+                            onClick={() => navigate('posts')}
+                            className="text-neutral-500 hover:text-white mb-8 flex items-center gap-2 transition-colors"
+                        >
+                            <Icon name="arrow-left" size={16} /> Back to Archive
+                        </button>
+
+                        <header className="mb-12">
+                            <div className="flex items-center gap-3 mb-6">
+                                <span className="text-violet-400 font-medium text-sm uppercase tracking-wider">{post.category}</span>
+                                <span className="w-1 h-1 bg-neutral-600 rounded-full" />
+                                <span className="text-neutral-500 text-sm">{formatDate(post.date)}</span>
+                            </div>
+                            
+                            <h1 className="text-4xl md:text-5xl font-bold text-white mb-8 leading-tight">
+                                {post.title}
+                            </h1>
+
+                            <div className="flex items-center justify-between border-y border-neutral-800 py-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white font-bold">
+                                        {post.author[0]}
+                                    </div>
+                                    <div>
+                                        <div className="text-white font-medium">{post.author}</div>
+                                        <div className="text-neutral-500 text-xs">Neural Hive Core Team</div>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex items-center gap-4">
+                                    <div className="text-neutral-400 text-sm flex items-center gap-1">
+                                        <Icon name="eye" size={16} /> {post.views}
+                                    </div>
+                                    <button className="text-neutral-400 hover:text-violet-400 transition-colors">
+                                        <Icon name="share-2" size={18} />
+                                    </button>
+                                </div>
+                            </div>
+                        </header>
+
+                        <div className="prose prose-invert prose-violet max-w-none">
+                            {renderContent(post.content)}
+                        </div>
+                    </div>
+                </article>
+            );
+        };
+
+        const About = () => (
+            <div className="pt-32 pb-20 max-w-4xl mx-auto px-4 animate-fade-in">
+                <h1 className="text-4xl font-bold text-white mb-10">About Neural Hive</h1>
+                <div className="space-y-6 text-lg text-neutral-300 leading-relaxed">
+                    <p>Neural Hive is a collective of machine learning engineers, data scientists, and researchers dedicated to demystifying the black box of modern AI.</p>
+                    <p>ML Mondays was born from a simple frustration: the gap between academic papers and production code is too wide. We aim to bridge that gap.</p>
+                </div>
+            </div>
+        );
+
+        const Ethos = () => (
+            <div className="pt-32 pb-20 max-w-4xl mx-auto px-4 animate-fade-in">
+                <h1 className="text-4xl font-bold text-white mb-10">Our Ethos</h1>
+                <div className="grid gap-8">
+                    {[
+                        { title: "Code over Hype", desc: "We don't care about buzzwords. We care about reproducible, efficient, and scalable implementations." },
+                        { title: "Open by Default", desc: "Knowledge grows when shared. Unless bound by strict NDA, our work is open source." },
+                        { title: "Rigorous Simplicity", desc: "Complexity is a liability. We strive to find the simplest effective solution to complex ML problems." }
+                    ].map((item, i) => (
+                        <div key={i} className="flex gap-6 items-start">
+                            <div className="w-12 h-12 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center text-violet-500 font-bold shrink-0">
+                                0{i + 1}
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold text-white mb-2">{item.title}</h3>
+                                <p className="text-neutral-400">{item.desc}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+
+        const WriteForUs = () => (
+            <div className="pt-32 pb-20 max-w-3xl mx-auto px-4 animate-fade-in">
+                <div className="text-center mb-12">
+                    <div className="flex justify-center mb-6"><Icon name="pen-tool" className="text-violet-500" size={48} /></div>
+                    <h1 className="text-4xl font-bold text-white mb-4">Contribute</h1>
+                    <p className="text-neutral-400">No fluff, just engineering.</p>
+                </div>
+                <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-8">
+                    <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+                        <input type="text" placeholder="Name" className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-white focus:border-violet-500 outline-none" />
+                        <textarea rows={4} placeholder="Brief abstract..." className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-white focus:border-violet-500 outline-none" />
+                        <Button className="w-full">Submit Proposal</Button>
+                    </form>
+                </div>
+            </div>
+        );
+
+        // --- LAYOUT ---
+
+        const Navbar = ({ activeRoute, navigate, mobileMenuOpen, setMobileMenuOpen }) => {
+            const navItems = [
+                { id: 'home', label: 'Home' },
+                { id: 'posts', label: 'Posts' },
+                { id: 'ethos', label: 'Ethos' },
+                { id: 'about', label: 'About' },
+                { id: 'write', label: 'Write for Us' },
+            ];
+
+            return (
+                <nav className="fixed top-0 w-full z-50 border-b border-white/5 bg-neutral-950/80 backdrop-blur-xl">
+                    <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+                        <div className="cursor-pointer" onClick={() => navigate('home')}>
+                            <Logo />
+                        </div>
+
+                        <div className="hidden md:flex items-center gap-8">
+                            {navItems.map(item => (
+                                <NavLink 
+                                    key={item.id} 
+                                    active={activeRoute === item.id || (activeRoute === 'post' && item.id === 'posts')}
+                                    onClick={() => navigate(item.id)}
+                                >
+                                    {item.label}
+                                </NavLink>
+                            ))}
+                        </div>
+
+                        <button className="md:hidden text-white" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+                            <Icon name={mobileMenuOpen ? 'x' : 'menu'} />
+                        </button>
+                    </div>
+
+                    {mobileMenuOpen && (
+                        <div className="md:hidden absolute top-16 left-0 w-full bg-neutral-900 border-b border-neutral-800 p-4 flex flex-col gap-4 shadow-2xl">
+                            {navItems.map(item => (
+                                <button 
+                                    key={item.id}
+                                    onClick={() => { navigate(item.id); setMobileMenuOpen(false); }}
+                                    className="text-left text-neutral-300 font-medium py-2 px-2 hover:bg-neutral-800 rounded-lg"
+                                >
+                                    {item.label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </nav>
+            );
+        };
+
+        // --- APP ---
+
+        const App = () => {
+            const [route, setRoute] = useState('home');
+            const [activePostSlug, setActivePostSlug] = useState(null);
+            const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+            const [posts, setPosts] = useState(BLOG_DATA);
+
+            const navigate = (newRoute, slug = null) => {
+                window.scrollTo(0, 0);
+                setRoute(newRoute);
+                if (slug) {
+                    setActivePostSlug(slug);
+                    setPosts(prev => prev.map(p => 
+                        p.slug === slug ? { ...p, views: p.views + 1 } : p
+                    ));
+                }
+            };
+
+            const activePost = posts.find(p => p.slug === activePostSlug);
+
+            return (
+                <div className="min-h-screen flex flex-col">
+                    <Navbar 
+                        activeRoute={route} 
+                        navigate={navigate} 
+                        mobileMenuOpen={mobileMenuOpen}
+                        setMobileMenuOpen={setMobileMenuOpen}
+                    />
+                    <main className="flex-grow">
+                        {route === 'home' && <Home navigate={navigate} posts={posts} />}
+                        {route === 'posts' && <Posts navigate={navigate} posts={posts} />}
+                        {route === 'post' && <PostDetail post={activePost} navigate={navigate} />}
+                        {route === 'about' && <About />}
+                        {route === 'ethos' && <Ethos />}
+                        {route === 'write' && <WriteForUs />}
+                    </main>
+                    <footer className="bg-neutral-950 border-t border-neutral-900 py-12 mt-auto">
+                        <div className="max-w-7xl mx-auto px-4 text-center text-neutral-600 text-xs">
+                            © 2025 Neural Hive. Built without npx.
+                        </div>
+                    </footer>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
